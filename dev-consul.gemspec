@@ -10,7 +10,11 @@ Gem::Specification.new do |spec|
   spec.email         = ['jmanero@rapid7.com']
 
   spec.summary       = 'Test/development wrapper for Consul by Hashicorp'
+  spec.description   = "dev/consul bundles all of Hashicorp's platform-specific binaries "\
+                       'for Consul and provides helpers to detect the local platform '\
+                       'and run the right build.'
   spec.homepage      = 'https://github.com/rapid7/dev-consul'
+  spec.license       = 'MIT'
 
   spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
   spec.bindir        = 'bin'
