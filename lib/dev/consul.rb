@@ -73,6 +73,8 @@ module Dev
             if leader == '""'
               puts 'Waiting for Consul HTTP API to be ready'
               sleep 1
+
+              next
             end
 
             puts 'Consul HTTP API is ready!'
