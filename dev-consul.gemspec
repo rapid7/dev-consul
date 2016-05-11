@@ -5,7 +5,7 @@ require 'dev/consul/version'
 
 Gem::Specification.new do |spec|
   spec.name          = 'dev-consul'
-  spec.version       = Dev::Consul::VERSION
+  spec.version       = "#{Dev::Consul::VERSION}.#{Dev::Consul::RELEASE}"
   spec.authors       = ['John Manero']
   spec.email         = ['jmanero@rapid7.com']
 
