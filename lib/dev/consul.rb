@@ -36,72 +36,84 @@ module Dev
         File.join(bindir, "consul_#{VERSION}_#{platform}_#{architecture}")
       end
 
-      def output(arg = nil)
-        @thread[:output] = arg unless @thread.nil? || arg.nil?
-        @thread[:output] unless @thread.nil?
+      attr_reader :output
+
+      ## Logging helper
+      def log(*message)
+        return unless output.is_a?(IO)
+
+        output.write(message.join(' ') + "\n")
+        output.flush
       end
 
-      def run
-        puts "Starting #{bin}"
+      def run(**options)
+        @output = options.fetch(:output, $stdout)
+        log "Starting #{bin}"
+
 
         ## Fork a child process for Consul from a thread
+        @stopped = false
         @thread = Thread.new do
           IO.popen("#{bin} agent -dev -advertise=127.0.0.1", 'r+') do |io|
             Thread.current[:process] = io.pid
-            puts "Started #{bin} (#{io.pid})"
+            log "Started #{bin} (#{io.pid})"
 
             ## Stream output
             loop do
               break if io.eof?
               chunk = io.readpartial(1024)
 
-              if Thread.current[:output]
-                Thread.current[:output].write(chunk)
-                Thread.current[:output].flush
-              end
+              next unless output.is_a?(IO)
+              output.write(chunk)
+              output.flush
             end
           end
         end
 
-        @thread[:output] = $stdout
-
-        ## Wait for the service to become ready
-        loop do
-          begin
-            leader = Net::HTTP.get('localhost', '/v1/status/leader', 8500)
-
-            if leader == '""'
-              puts 'Waiting for Consul HTTP API to be ready'
-              sleep 1
-
-              next
-            end
-
-            puts 'Consul HTTP API is ready!'
-            break
-
-          rescue Errno::ECONNREFUSED
-            puts 'Waiting for Consul HTTP API to be ready'
-            sleep 1
-          end
-        end
+        self
       end
 
       def wait
+        ## Wait for the service to become ready
+        loop do
+          break if @stopped || @thread.nil? || !@thread.alive?
+
+          leader =
+            begin
+              Net::HTTP.get('localhost', '/v1/status/leader', 8500)
+            rescue Errno::ECONNREFUSED
+              log 'Waiting for Consul HTTP API to be ready'
+              sleep 1
+              next
+            end
+
+          if leader == '""'
+            log 'Waiting for RAFT to initialize'
+            sleep 1
+            next
+          end
+
+          log 'Consul HTTP API is ready!'
+          break
+        end
+      end
+
+      def block
         @thread.join unless @thread.nil?
       end
 
       def stop
         unless @thread.nil?
           unless @thread[:process].nil?
-            puts "Stop #{bin} (#{@thread[:process]})"
-            Process.kill('INT', @thread[:process])
+            log "Stop #{bin} (#{@thread[:process]})"
+            Process.kill('TERM', @thread[:process])
           end
 
           @thread.join
         end
 
         @thread = nil
+        @stopped = true
       end
     end
   end

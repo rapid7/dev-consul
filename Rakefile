@@ -10,11 +10,11 @@ task :fetch do
 end
 
 task :run do
-  Dev::Consul.run
+  Dev::Consul.run.wait
 end
 
 task :wait do
-  Dev::Consul.wait
+  Dev::Consul.block
 end
 
 task :default => [:run, :wait]
